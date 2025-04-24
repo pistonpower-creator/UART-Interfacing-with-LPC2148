@@ -1,0 +1,81 @@
+
+UART.c
+#include<global.h>
+#include<lpc2148.h>
+#include<pconp.h>
+#include<pcb.h>
+#include<uart0.h>
+
+/* (1) Config UART0 Pin */
+static void config_UART0_Pins(void)
+{
+	PINSEL0.P0_0 = P0_0_TXD0;
+	PINSEL0.P0_1 = P0_1_RXD0;
+}
+/* (2) Set Baud rate - 9600*/
+static void Set_BaudRate_9600(void)
+{
+	U0LCR = 0x83;   // 
+	U0DLL = 0x13;    //9600
+	U0DLM = 0x00;     
+	//U0FDR = 0x52;
+  U0LCR = 0x03;    
+}                  	// DIVADDVALUE = 2 , MULVALUE = 5 
+
+/* (3) set UART Data Frame -
+1 start Bit + 8 Bit data + 1 Stop Bit
+U0LCR:
+---------
+Bit 0 and Bit 1 : 11 = 8 Bit Character length
+
+bit 2 - Number of Stop Bits
+0 = 1 stop Bit
+1 = 2 Stop Bit
+*/
+static void Set_UART0_Data_Frame(void)
+  {
+	  U0LCR|= (1<<BIT0)|(1<<BIT1);
+  } 
+
+/* (4) Intialization of UART0
+   - Config UART Pin
+   - Power On UART0 - PCONP
+   - Set Baud rate - 9600
+   - set UART Data frame
+*/
+void Init_UART(void)
+{
+	config_UART0_Pins();
+	Power_On_UART0();
+	Set_BaudRate_9600();
+	Set_UART0_Data_Frame();
+}
+	
+/* (5) send UART0 DATA
+ULSR- Bit5
+Bit 5 - Transmitter Holding Register Empty
+0 = U0THR has Valid data
+1 = U0THR empty
+*/
+
+void Set_UART0_Data(unsigned char Dat)
+{
+	U0THR = Dat;
+	//while(TI==0);--------> U0LSR, BIT5
+	while(!(U0LSR & (1<<BIT5)));     //If it is 0 then it will stay in loop once it will 1 then come out from the loop
+}
+
+/*  (6) Receive UART0 Data
+U0LSR
+Bit 0 - Receiver Data Ready
+0 = U0RBR is empty
+1 = U0RBR contains valid data
+*/
+
+unsigned char Get_UART0_data(void)
+{
+	unsigned char RawData = 0;
+	while((U0LSR & (1<<0))== 0);
+  RawData = U0RBR;
+	return RawData;
+}
